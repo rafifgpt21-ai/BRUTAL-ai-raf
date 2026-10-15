@@ -59,9 +59,9 @@ world.Step(1f / 60f, 4); // Satu langkah; aplikasi mengatur akumulator fixed-ste
 
 Salah: `var definition = default(B2WorldDef);` sebagai pengganti konfigurasi awal; gunakan `B2WorldDef.Default` lalu ubah field yang diperlukan. Salah pula membuat dua pemilik `using` dari salinan `B2World` yang sama.
 
-## Audio: FMOD dan OpenAL
+## Audio: FMOD, OpenAL, dan SDL Mixer
 
-Pilih API sesuai backend audio aplikasi. Kedua modul mengekspos pengelolaan resource, bukan komponen audio gameplay otomatis.
+Pilih API sesuai backend audio aplikasi. Modul-modul ini mengekspos pengelolaan resource, bukan komponen audio gameplay otomatis.
 
 ### FMOD
 
@@ -118,6 +118,14 @@ finally
 [AlBuffer.SetData](../../Brutal.OpenAl/Manual/AlBuffer.cs) menerima format, `ReadOnlySpan<byte>` dan sample rate; ini unggahan PCM, bukan pembaca file WAV/MP3. [Al.GenBuffer/GenSource](../../Brutal.OpenAl/Generated/Al/Al.ObjectNames.gen.cs) membuat nama native. [AlBuffer](../../Brutal.OpenAl/Generated/Al/AlBuffer.ObjectName.gen.cs) dan [AlSource](../../Brutal.OpenAl/Generated/Al/AlSource.ObjectName.gen.cs) adalah struct nama yang harus dihapus tepat sekali; `new AlBuffer(1)` hanya membungkus angka, bukan alokasi. Lepas ikatan/pemakaian buffer oleh source sebelum menghapus buffer. Untuk parameter berbasis enum, import namespace opt-in `Brutal.OpenAlApi.Params`.
 
 Benar: gunakan [Al.ThrowIfError()](../../Brutal.OpenAl/Manual/Errors.cs) untuk memeriksa operasi AL; wrapper tidak otomatis memeriksa setiap panggilan AL. Salah: membuat operasi AL pada worker tanpa menyiapkan context yang berlaku. Jika memakai context per-thread, periksa dukungan `ALC_EXT_thread_local_context` sebelum memakai `Context.MakeThreadCurrent(...)`, dan detach lewat `Context.MakeThreadCurrent(null)` pada thread itu sebelum membuang context.
+
+### SDL Mixer
+
+Namespace `Brutal.SdlApi.Mixer` memakai API SDL_mixer 3. Mulai dengan `SdlMixer.Init()`, lalu `CreateMixerDevice(uint, SdlAudioSpec*)` untuk output perangkat atau `CreateMixer(SdlAudioSpec*)` untuk mixing tanpa perangkat. `LoadAudio(MixMixer, string, bool)` menghasilkan `MixAudio`; `CreateTrack(MixMixer)` menghasilkan track. Signature dan kontrak pelepasan ada di [wrapper SDL Mixer](../../Brutal.Sdl.Mixer/Generated/Libraries/SdlMixer.Ergonomic.gen.cs).
+
+`DestroyMixer(mixer)` menghancurkan seluruh track/group miliknya; hentikan penggunaan semua salinannya dan jangan memanggil `DestroyTrack`/`DestroyGroup` lagi sesudah itu. `MixAudio` dapat dibagi antar-mixer dan tetap harus dilepas pemiliknya melalui `DestroyAudio(audio)`. Operasi ini mengurangi reference count; sesudahnya pemanggil menganggap handle tidak valid walaupun track masih menahan referensi internal. Untuk mixer perangkat, jalankan `DestroyMixer` pada main thread; mixer tanpa perangkat mengizinkannya dari thread mana pun.
+
+[Callback managed](../../Brutal.Sdl.Mixer/Manual/Libraries/SdlMixer.Callbacks.cs) berjalan pada thread audio dan ditahan oleh `GCHandle`. Bersihkan registrasi dengan setter callback yang sama dan argumen `null` selagi track/group/mixer masih hidup; penghancuran objek native tidak membersihkan registry managed. Batasi pemakaian `Span<float>` PCM ke callback tersebut. Panggil [ThrowPendingCallbackExceptions()](../../Brutal.Sdl.Mixer/SdlMixer.cs) secara berkala untuk meneruskan exception callback ke thread aplikasi. Setelah resource selesai dipakai, akhiri dengan [SdlMixer.Quit()](../../Brutal.Sdl.Mixer/Manual/Libraries/SdlMixer.Init.cs): wrapper menunggu native `Quit` kembali sebelum membebaskan sisa handle callback dan membersihkan exception tersimpan.
 
 ## ImGui: konsol dan command
 
