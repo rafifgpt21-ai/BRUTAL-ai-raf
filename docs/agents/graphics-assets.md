@@ -60,7 +60,7 @@ while (!window.ShouldClose) { }       // Event window/input tidak diproses.
 | Gambar CPU SDL | [`SdlImage.Load(string)`](../../Brutal.Sdl.Image/Generated/Libraries/SdlImage.Ergonomic.gen.cs) di `Brutal.SdlApi.Image` menghasilkan `SdlSurface*` | Pemanggil; `Sdl.PInvoke.DestroySurface(surface)` di [PInvoke SDL](../../Brutal.Sdl/Generated/Sdl.PInvoke.gen.cs). |
 | Tekstur untuk SDL renderer | `SdlImage.LoadTexture(SdlRenderer, string)` | Pemanggil; [`Sdl.Render.DestroyTexture`](../../Brutal.Sdl/Generated/Libraries/Sdl.Render.gen.cs), sebelum renderer dihancurkan. |
 | Font SDL_ttf | [`SdlTtf.Init()`, `OpenFont(string, float)`](../../Brutal.Sdl.Ttf/Generated/Libraries/SdlTtf.Ergonomic.gen.cs) di `Brutal.SdlApi.Ttf` | `CloseFont(font)`, lalu `SdlTtf.Quit()`. |
-| Mixer audio | [`Brutal.Sdl.Mixer`](../../Brutal.Sdl.Mixer/Manual/Libraries/SdlMixer.Init.cs) | Lihat [panduan audio dan runtime](physics-audio-jobs.md). |
+| Mixer audio | [`Brutal.Sdl.Mixer`](../../Brutal.Sdl.Mixer/Manual/Libraries/SdlMixer.Init.cs) | Lihat [lifecycle SDL Mixer](physics-audio-jobs.md#sdl-mixer). |
 
 `SdlSurface*`, `SdlTexture`, dan `ITexture` adalah tipe berbeda. Pilih loader sesuai renderer tujuan; `TextureLoader.Unload` hanya menerima implementasi yang dikenal loader tekstur BRUTAL.
 
