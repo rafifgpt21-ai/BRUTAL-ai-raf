@@ -1,36 +1,36 @@
 # Issue tracker: GitHub
 
-Spec dan tiket repo ini disimpan di GitHub Issues.
-Gunakan gh CLI dengan repo rafsidqi/BRUTAL-raf.
+Specs and tickets for this repository are stored in GitHub Issues.
+Use the gh CLI with the rafsidqi/BRUTAL-raf repository.
 
-## Operasi
+## Operations
 
-- Baca: gh issue view <nomor> --repo rafsidqi/BRUTAL-raf --comments
-- Daftar: gh issue list --repo rafsidqi/BRUTAL-raf --state open
-- Buat: gh issue create --repo rafsidqi/BRUTAL-raf --title "..." --body-file <file>
-- Komentar: gh issue comment <nomor> --repo rafsidqi/BRUTAL-raf --body-file <file>
-- Label: gh issue edit <nomor> --repo rafsidqi/BRUTAL-raf --add-label "..."
-- Selesaikan: gh issue close <nomor> --repo rafsidqi/BRUTAL-raf --comment "..."
+- Read: gh issue view <number> --repo rafsidqi/BRUTAL-raf --comments
+- List: gh issue list --repo rafsidqi/BRUTAL-raf --state open
+- Create: gh issue create --repo rafsidqi/BRUTAL-raf --title "..." --body-file <file>
+- Comment: gh issue comment <number> --repo rafsidqi/BRUTAL-raf --body-file <file>
+- Label: gh issue edit <number> --repo rafsidqi/BRUTAL-raf --add-label "..."
+- Resolve: gh issue close <number> --repo rafsidqi/BRUTAL-raf --comment "..."
 
-Untuk isi multiline, simpan teks ke file UTF-8 dan gunakan --body-file.
+For multiline bodies, save the text to a UTF-8 file and use --body-file.
 
-## Spec, tiket, dan dependensi
+## Specs, tickets, and dependencies
 
-- Publikasikan spec sebagai issue.
-- Buat satu issue per tiket dan tautkan ke issue spec.
-- Catat hubungan blocking dengan native issue dependencies.
-  Jika tidak tersedia, gunakan baris "Blocked by: #<nomor>".
-- Tiket siap dikerjakan setelah semua blocker selesai.
-- Tutup tiket setelah kriteria penerimaan terpenuhi.
-  Sertakan bukti validasi dan referensi commit atau PR.
-- Tutup spec setelah semua tiketnya selesai.
+- Publish each spec as an issue.
+- Create one issue per ticket and link it to the spec issue.
+- Record blocking relationships using native issue dependencies.
+  If unavailable, use a "Blocked by: #<number>" line.
+- A ticket is ready for work once all blockers are resolved.
+- Close tickets after their acceptance criteria are met.
+  Include validation evidence and commit or PR references.
+- Close the spec once all its tickets are resolved.
 
 ## Pull requests as a triage surface
 
 PRs as a request surface: no.
 
-## Ketersediaan
+## Availability
 
-Operasi tiket memerlukan Issues aktif dan izin GitHub yang sesuai.
-Jika operasi ditolak, laporkan kendalanya; jangan mengklaim tiket
-berhasil dibuat atau ditutup.
+Ticket operations require Issues to be enabled and appropriate GitHub permissions.
+If an operation is denied, report the blocker; do not claim that a ticket
+was successfully created or closed.

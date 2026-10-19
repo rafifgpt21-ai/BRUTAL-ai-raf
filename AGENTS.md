@@ -1,64 +1,70 @@
-# Panduan Agent BRUTAL
+# BRUTAL Agent Guide
 
-BRUTAL adalah framework C# untuk menyusun game atau engine sendiri: binding native dan utilitas memori, matematika, teks, serta job. Game menentukan loop, rendering, dan sistem gameplay-nya. Mulai dari [README](README.md); snapshot ini belum memiliki project/solution untuk build dari source.
+BRUTAL is a C# framework for building your own game or engine, with native bindings and utilities for memory, mathematics, text, and jobs. The game defines its own loop, rendering, and gameplay systems. Start with the [README](README.md); this snapshot does not yet include project/solution files for building from source.
 
-## Aturan utama
+## Core rules
 
-- Baca implementasi dan overload sebelum memakai API; nama folder paket sering berbeda dari namespace C#.
-- Pilih helper publik atau `.Abstractions` yang sesuai, lalu binding publik; pakai `PInvoke` hanya bila perlu mengelola detail ABI sendiri.
-- Perluas kode tulisan tangan melalui partial/helper yang sesuai. Jangan mengedit `.gen.cs` secara manual; perubahan permanen harus melalui generator, yang belum disertakan dalam snapshot ini.
-- Catat siapa pemilik setiap handle/buffer, kapan dipinjam, dan siapa yang melepasnya. Menyalin struct handle tidak menggandakan resource native.
-- Gunakan tipe ABI dan teks UTF-8 yang diminta signature. Simpan `bool`, `string`, dan koleksi .NET bila API dan kebutuhan game memang cocok.
-- Hindari alokasi per frame yang tidak perlu; periksa implementasi sebelum menganggap koleksi atau konversi teks bebas alokasi.
-- Hormati thread dan lifecycle library: window/UI, callback, GPU, dan job memiliki aturan berbeda; lihat panduan terkait.
-- Untuk kontribusi, ikuti [CONTRIBUTING.md](CONTRIBUTING.md), termasuk sign-off commit. Rujuk [LICENSE.txt](LICENSE.txt) dan [NOTICE.txt](NOTICE.txt) saat distribusi.
+- Read implementations and overloads before using an API; package folder names often differ from C# namespaces.
+- Choose suitable public helpers or `.Abstractions`, then public bindings; use `PInvoke` when you need to manage ABI details yourself.
+- Extend handwritten code through suitable partial types/helpers. Do not edit `.gen.cs` manually; lasting changes belong in the generator, which is not included in this snapshot.
+- Track who owns each handle/buffer, when it is borrowed, and who releases it. Copying a handle struct does not duplicate the native resource.
+- Use the ABI types and UTF-8 text required by the signature. Keep `bool`, `string`, and .NET collections when they fit the API and game requirements.
+- Avoid unnecessary per-frame allocations; inspect the implementation before assuming collections or text conversions are allocation-free.
+- Respect library threading and lifecycle rules: windows/UI, callbacks, GPUs, and jobs have different requirements; read the relevant guide.
+- Follow [CONTRIBUTING.md](CONTRIBUTING.md), including commit sign-off, when contributing. Refer to [LICENSE.txt](LICENSE.txt) and [NOTICE.txt](NOTICE.txt) when distributing.
 
-## Pilih panduan sesuai pekerjaan
+## Choose a guide for your task
 
-| Saat mengerjakan | Baca sebelum menulis kode |
+| When working on | Read before writing code |
 | --- | --- |
-| Binding, partial, namespace, persiapan proyek | [Arsitektur dan batas snapshot](docs/agents/architecture.md) |
-| Tipe dasar, pointer, memori, koleksi, matematika, teks, log, lokalisasi | [Fondasi](docs/agents/foundation.md) |
-| Window/input, Vulkan/OpenGL, tekstur dan model glTF | [Grafis dan aset](docs/agents/graphics-assets.md) |
-| Fisika, audio, console/command ImGui, job paralel | [Fisika, audio, UI debug, dan job](docs/agents/physics-audio-jobs.md) |
+| Bindings, partial types, namespaces, project setup | [Architecture and snapshot limitations](docs/agents/architecture.md) |
+| Basic types, pointers, memory, collections, mathematics, text, logging, localization | [Foundations](docs/agents/foundation.md) |
+| Windows/input, Vulkan/OpenGL, textures and glTF models | [Graphics and assets](docs/agents/graphics-assets.md) |
+| Physics, audio, ImGui consoles/commands, parallel jobs | [Physics, audio, debug UI, and jobs](docs/agents/physics-audio-jobs.md) |
 
-## Semua modul dalam snapshot
+## All modules in this snapshot
 
-Tabel ini mencakup 48 folder `Brutal.*`. Tautan menuju source; ketersediaan source tidak menjamin seluruh tool build atau binary native ikut tersedia.
+This table covers all 48 `Brutal.*` folders. Links point to source; source availability does not guarantee that all build tools or native binaries are included.
 
-| Modul | Kegunaan / batas yang perlu diketahui |
+| Module | Purpose / limitations to know |
 | --- | --- |
-| [Brutal.Core](Brutal.Core/), [Brutal.Interop](Brutal.Interop/) | Tipe ABI, pointer, atribut/platform; marshaller string dan handle native |
-| [Brutal.Memory](Brutal.Memory/), [Brutal.Collections](Brutal.Collections/) | Allocator/memori native; koleksi native dan stride |
-| [Brutal.Numerics](Brutal.Numerics/), [Brutal.Maths](Brutal.Maths/) | Vektor/matriks/warna; extension `Random` |
-| [Brutal.Strings](Brutal.Strings/), [Brutal.Logging](Brutal.Logging/), [Brutal.Localization](Brutal.Localization/) | UTF-8/builder, log kategori, teks terjemahan |
-| [Brutal.Glfw](Brutal.Glfw/), [Brutal.Sdl](Brutal.Sdl/) | Window, input, event, integrasi API grafis |
-| [Brutal.Sdl.Image](Brutal.Sdl.Image/), [Brutal.Sdl.Mixer](Brutal.Sdl.Mixer/), [Brutal.Sdl.Ttf](Brutal.Sdl.Ttf/) | Add-on SDL untuk gambar, mixing audio, font |
-| [Brutal.Vulkan](Brutal.Vulkan/), [Brutal.Vulkan.Abstractions](Brutal.Vulkan.Abstractions/), [Brutal.Vulkan.Vma](Brutal.Vulkan.Vma/) | Binding/handle Vulkan, helper resource/rendering, allocator VMA |
-| [Brutal.OpenGl](Brutal.OpenGl/), [Brutal.ShaderC](Brutal.ShaderC/), [Brutal.Slang](Brutal.Slang/) | Binding OpenGL; kompilasi shader |
-| [Brutal.Texture](Brutal.Texture/), [Brutal.Texture.Abstractions](Brutal.Texture.Abstractions/) | Data tekstur dan pembaca format melalui decoder |
-| [Brutal.Gli](Brutal.Gli/), [Brutal.Ktx](Brutal.Ktx/), [Brutal.Stb](Brutal.Stb/) | Tekstur GLI/KTX dan decoder STB |
-| [Brutal.Gltf](Brutal.Gltf/), [Brutal.MeshOptimizer](Brutal.MeshOptimizer/), [Brutal.Render.Mesh](Brutal.Render.Mesh/) | Data/akses glTF, optimasi mesh, storage dan mesh prosedural |
-| [Brutal.ImGui](Brutal.ImGui/), [Brutal.ImGui.Extensions](Brutal.ImGui.Extensions/), [Brutal.ImGui.Abstractions](Brutal.ImGui.Abstractions/) | UI immediate, overload/helper, console dan terminal |
-| [Brutal.ImGui.Backends](Brutal.ImGui.Backends/), [Brutal.ImGui.FreeType](Brutal.ImGui.FreeType/), [Brutal.ImPlot](Brutal.ImPlot/) | Backend platform/render, integrasi font FreeType, plotting |
-| [Brutal.Jolt](Brutal.Jolt/), [Brutal.Box2D](Brutal.Box2D/) | Fisika 3D dan 2D |
-| [Brutal.Fmod](Brutal.Fmod/), [Brutal.OpenAl](Brutal.OpenAl/) | Audio native |
+| [Brutal.Core](Brutal.Core/), [Brutal.Interop](Brutal.Interop/) | ABI types, pointers, attributes/platform; native string and handle marshallers |
+| [Brutal.Memory](Brutal.Memory/), [Brutal.Collections](Brutal.Collections/) | Native memory/allocators; native and strided collections |
+| [Brutal.Numerics](Brutal.Numerics/), [Brutal.Maths](Brutal.Maths/) | Vectors/matrices/colors; `Random` extensions |
+| [Brutal.Strings](Brutal.Strings/), [Brutal.Logging](Brutal.Logging/), [Brutal.Localization](Brutal.Localization/) | UTF-8/builders, category logging, translated text |
+| [Brutal.Glfw](Brutal.Glfw/), [Brutal.Sdl](Brutal.Sdl/) | Windows, input, events, graphics API integration |
+| [Brutal.Sdl.Image](Brutal.Sdl.Image/), [Brutal.Sdl.Mixer](Brutal.Sdl.Mixer/), [Brutal.Sdl.Ttf](Brutal.Sdl.Ttf/) | SDL add-ons for images, audio mixing, and fonts |
+| [Brutal.Vulkan](Brutal.Vulkan/), [Brutal.Vulkan.Abstractions](Brutal.Vulkan.Abstractions/), [Brutal.Vulkan.Vma](Brutal.Vulkan.Vma/) | Vulkan bindings/handles, resource/rendering helpers, VMA allocator |
+| [Brutal.OpenGl](Brutal.OpenGl/), [Brutal.ShaderC](Brutal.ShaderC/), [Brutal.Slang](Brutal.Slang/) | OpenGL bindings; shader compilation |
+| [Brutal.Texture](Brutal.Texture/), [Brutal.Texture.Abstractions](Brutal.Texture.Abstractions/) | Texture data and format readers backed by decoders |
+| [Brutal.Gli](Brutal.Gli/), [Brutal.Ktx](Brutal.Ktx/), [Brutal.Stb](Brutal.Stb/) | GLI/KTX textures and STB decoding |
+| [Brutal.Gltf](Brutal.Gltf/), [Brutal.MeshOptimizer](Brutal.MeshOptimizer/), [Brutal.Render.Mesh](Brutal.Render.Mesh/) | glTF data/access, mesh optimization, storage and procedural meshes |
+| [Brutal.ImGui](Brutal.ImGui/), [Brutal.ImGui.Extensions](Brutal.ImGui.Extensions/), [Brutal.ImGui.Abstractions](Brutal.ImGui.Abstractions/) | Immediate-mode UI, overloads/helpers, consoles and terminals |
+| [Brutal.ImGui.Backends](Brutal.ImGui.Backends/), [Brutal.ImGui.FreeType](Brutal.ImGui.FreeType/), [Brutal.ImPlot](Brutal.ImPlot/) | Platform/rendering backends, FreeType font integration, plotting |
+| [Brutal.Jolt](Brutal.Jolt/), [Brutal.Box2D](Brutal.Box2D/) | 3D and 2D physics |
+| [Brutal.Fmod](Brutal.Fmod/), [Brutal.OpenAl](Brutal.OpenAl/) | Native audio |
 | [Brutal.Concurrency](Brutal.Concurrency/), [Brutal.RakNet](Brutal.RakNet/) | Job/threading; networking |
-| [Brutal.Monitor.Common](Brutal.Monitor.Common/), [Brutal.Monitor.Host](Brutal.Monitor.Host/) | Opsi/protokol monitor; integrasi host, log dan crash dump |
-| [Brutal.RenderDoc](Brutal.RenderDoc/), [Brutal.RenderDoc.ImGui](Brutal.RenderDoc.ImGui/) | Capture RenderDoc dan jendela kontrol ImGui |
-| [Brutal.NativeFileDialog](Brutal.NativeFileDialog/), [Brutal.NotCurses](Brutal.NotCurses/) | Dialog file native dan UI terminal |
-| [Brutal.FreeType](Brutal.FreeType/), [Brutal.ZLib](Brutal.ZLib/) | Folder lisensi pihak ketiga saja pada snapshot ini; API C# belum ada |
+| [Brutal.Monitor.Common](Brutal.Monitor.Common/), [Brutal.Monitor.Host](Brutal.Monitor.Host/) | Monitor options/protocol; host integration, logs and crash dumps |
+| [Brutal.RenderDoc](Brutal.RenderDoc/), [Brutal.RenderDoc.ImGui](Brutal.RenderDoc.ImGui/) | RenderDoc capture and an ImGui control window |
+| [Brutal.NativeFileDialog](Brutal.NativeFileDialog/), [Brutal.NotCurses](Brutal.NotCurses/) | Native file dialogs and terminal UI |
+| [Brutal.FreeType](Brutal.FreeType/), [Brutal.ZLib](Brutal.ZLib/) | Third-party license folders only in this snapshot; no C# API yet |
 
 ## Agent skills
 
+### Adaptive orchestration
+
+When the user invokes `$adaptive-orchestrator`, read the project-local
+[Adaptive Orchestrator skill](.agents/skills/adaptive-orchestrator/SKILL.md)
+for model routing, task dependencies, and optional isolated subagents.
+
 ### Issue tracker
 
-Spec dan tiket disimpan di GitHub Issues rafsidqi/BRUTAL-raf.
-Sebelum membaca, membuat, atau menyelesaikan tiket, baca
-[aturan issue tracker](docs/agents/issue-tracker.md).
+Specs and tickets are stored in GitHub Issues for rafsidqi/BRUTAL-raf.
+Before reading, creating, or resolving tickets, read the
+[issue tracker rules](docs/agents/issue-tracker.md).
 
 ### Domain docs
 
-Layout single-context: GLOSSARY.md dan docs/adr/ di root.
-Sebelum eksplorasi atau perubahan domain, baca
-[aturan domain](docs/agents/domain.md).
+Single-context layout: GLOSSARY.md and docs/adr/ at the root.
+Before exploring or changing the domain, read the
+[domain rules](docs/agents/domain.md).

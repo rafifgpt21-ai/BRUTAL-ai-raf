@@ -80,6 +80,8 @@ Third-party notices for each library live in its `LICENSES` folder, `Brutal.ImGu
 
 ## Getting started
 
+For a human-oriented guide to planning a game of any size, choosing a BRUTAL stack, setting up its repository and AI agents, and organizing development through release, read [Start a game project with BRUTAL and AI agents](docs/getting-started-with-ai.md).
+
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)

@@ -1,12 +1,12 @@
-# Arsitektur, binding, dan persiapan proyek
+# Architecture, bindings, and project setup
 
-Kembali ke [AGENTS.md](../../AGENTS.md). Untuk API game, lanjutkan ke [fondasi](foundation.md), [grafis/aset](graphics-assets.md), atau [fisika/audio/job](physics-audio-jobs.md).
+Return to [AGENTS.md](../../AGENTS.md). For game APIs, continue with [foundations](foundation.md), [graphics/assets](graphics-assets.md), or [physics/audio/jobs](physics-audio-jobs.md).
 
-## Mulai dari kondisi repo yang sebenarnya
+## Start with the repository's actual state
 
-[README: Getting started / Building from source](../../README.md#getting-started) menyebut .NET 10 SDK, Windows/Linux, dan penggunaan paket NuGet `Ahwoo.Brutal.*`. Rendering Vulkan juga memerlukan GPU/driver yang sesuai; Vulkan SDK disebut untuk validation layers. Repo ini berisi source tanpa `.csproj`, `.sln`, `.slnx`, atau konfigurasi build/test. Jangan menjanjikan `dotnet build`/`dotnet test` di root atau menebak versi dependensi dari `using`.
+[README: Getting started / Building from source](../../README.md#getting-started) specifies the .NET 10 SDK, Windows/Linux, and the `Ahwoo.Brutal.*` NuGet packages. Vulkan rendering also requires a suitable GPU/driver; the Vulkan SDK is mentioned for validation layers. This repository contains source without `.csproj`, `.sln`, `.slnx`, or build/test configuration. Do not promise that `dotnet build`/`dotnet test` work at the root or guess dependency versions from `using` directives.
 
-Untuk eksperimen game terpisah, perintah berikut berasal dari README:
+For a separate game experiment, the following commands come from the README:
 
 ```powershell
 dotnet new console -n HelloBrutal
@@ -15,70 +15,70 @@ dotnet add package Ahwoo.Brutal.Core
 dotnet add package Ahwoo.Brutal.Glfw
 ```
 
-Contoh window lengkap ada di [panduan grafis](graphics-assets.md). Pilih paket tambahan sesuai API yang benar-benar dipakai. Kode dengan pointer memerlukan konteks `unsafe` dan `AllowUnsafeBlocks` pada project konsumen. Contoh dalam panduan ini diverifikasi terhadap source, bukan hasil kompilasi project yang belum tersedia; contoh bertanda fragmen memerlukan objek/konteks yang disebutkan di sekitarnya.
+A complete window example is in the [graphics guide](graphics-assets.md). Choose additional packages for the APIs actually used. Pointer code requires an `unsafe` context and `AllowUnsafeBlocks` in the consuming project. Examples in these guides were checked against source, rather than compiled in the unavailable project; examples marked as fragments require the objects/context described around them.
 
-Binary native tetap diperlukan. Misalnya [resolver Vulkan](../../Brutal.Vulkan/ImportResolver.cs) memuat library sesuai OS dan memperoleh `vkGetInstanceProcAddr`. Menyalin `.cs` tidak otomatis menyediakan DLL, generator, atau dependensi paket. `Brutal.FreeType/` dan `Brutal.ZLib/` pada snapshot hanya berisi `LICENSES/`; jangan menyusun contoh API C# dari nama paketnya.
+Native binaries are still required. For example, the [Vulkan resolver](../../Brutal.Vulkan/ImportResolver.cs) loads the library for the current OS and obtains `vkGetInstanceProcAddr`. Copying `.cs` files does not automatically supply DLLs, generators, or package dependencies. `Brutal.FreeType/` and `Brutal.ZLib/` contain only `LICENSES/` in this snapshot; do not invent C# API examples from package names.
 
-## Generated dan Manual menyusun API yang sama
+## Generated and Manual form the same API
 
-| Lokasi | Peran yang terlihat pada source |
+| Location | Role visible in the source |
 | --- | --- |
-| `Generated/`, `*.gen.cs` | Hasil generator: enum, layout struct, delegate, handle, binding P/Invoke, dan wrapper publik. Generated tidak selalu berarti hanya API mentah. |
-| `Manual/` dan helper di root modul | Implementasi tulisan tangan, overload khusus, pengelolaan lifecycle, dan partial yang melengkapi tipe generated. |
-| `Generated-Internal/` di ImGui | Permukaan internal ImGui; pilih API publik bila tersedia karena detail internal mengikat game ke implementasi library. |
+| `Generated/`, `*.gen.cs` | Generator output: enums, struct layouts, delegates, handles, P/Invoke bindings, and public wrappers. Generated does not necessarily mean a raw API only. |
+| `Manual/` and helpers at the module root | Handwritten implementations, special overloads, lifecycle management, and partial types that complement generated types. |
+| `Generated-Internal/` in ImGui | ImGui's internal surface; prefer public APIs when available because internal details couple the game to the library implementation. |
 
-[Glfw.Context generated](../../Brutal.Glfw/Generated/Libraries/Glfw.Context.gen.cs) bertanda `do not edit by hand`. [Partial manual](../../Brutal.Glfw/Manual/Libraries/Glfw.Context.cs) menjelaskan bahwa `GetCurrentContext` dan `GetProcAddress` ditangani khusus, sedangkan anggota lain digabungkan ke `Brutal.GlfwApi.Glfw` yang sama. [Glfw.Vulkan manual](../../Brutal.Glfw/Manual/Libraries/Glfw.Vulkan.cs) menambahkan `CreateWindowSurface` dengan pinning output dan allocator null.
+[Generated Glfw.Context](../../Brutal.Glfw/Generated/Libraries/Glfw.Context.gen.cs) is marked `do not edit by hand`. The [manual partial](../../Brutal.Glfw/Manual/Libraries/Glfw.Context.cs) explains that `GetCurrentContext` and `GetProcAddress` require special handling, while other members are combined into the same `Brutal.GlfwApi.Glfw` type. [Manual Glfw.Vulkan](../../Brutal.Glfw/Manual/Libraries/Glfw.Vulkan.cs) adds `CreateWindowSurface`, pinning the output and passing a null allocator.
 
-Contoh kecil yang bisa dilacak langsung: [VkExtent2D generated](../../Brutal.Vulkan/Generated/Structs/VkExtent2D.gen.cs) mendefinisikan `Width`/`Height`, sedangkan [partial manual](../../Brutal.Vulkan/Manual/Partials/VkExtent2D.cs) menambahkan konstruktor dua argumen.
+A small, directly traceable example: [generated VkExtent2D](../../Brutal.Vulkan/Generated/Structs/VkExtent2D.gen.cs) defines `Width`/`Height`, while its [manual partial](../../Brutal.Vulkan/Manual/Partials/VkExtent2D.cs) adds a two-argument constructor.
 
 ```csharp
 using Brutal.VulkanApi;
 
-// Benar: satu tipe publik, gabungan generated + manual.
+// Correct: one public type combining generated and manual code.
 var extent = new VkExtent2D(1280, 720);
 
-// Salah: namespace tidak mengikuti nama folder source.
+// Incorrect: the namespace does not follow source folder names.
 // var extent = new Brutal.Vulkan.Generated.VkExtent2D(1280, 720);
 ```
 
-Generator disebut dalam header, tetapi project generator tidak ikut dalam snapshot. Untuk perubahan binding, temukan sumber generator sebelum regenerasi; untuk helper game gunakan API publik atau partial/helper tulisan tangan yang sesuai, bukan patch hasil generator.
+The headers name generators, but generator projects are absent from this snapshot. For binding changes, locate the generator source before regenerating; for game helpers, use public APIs or appropriate handwritten partial types/helpers rather than patching generator output.
 
-## Abstractions dan Extensions
+## Abstractions and Extensions
 
-Mulai dengan helper yang cocok dengan kebutuhan game, lalu turun ke binding publik saat kontrol tambahan diperlukan. Pemilihan lapisan dilakukan per fitur; tidak ada urutan inisialisasi universal untuk semua modul.
+Start with helpers that fit the game's needs, then use public bindings when more control is required. Choose the layer per feature; there is no universal initialization order across all modules.
 
-| Lapisan | Contoh nyata dan alasan pemakaian |
+| Layer | Concrete examples and reasons to use it |
 | --- | --- |
-| `.Abstractions` | [DeviceEx](../../Brutal.Vulkan.Abstractions/Classes/DeviceEx.cs), [StagingPool](../../Brutal.Vulkan.Abstractions/StagingPool.cs), dan [FrameResources](../../Brutal.Vulkan.Abstractions/FrameResources.cs) membantu resource GPU; [ConsoleWindow](../../Brutal.ImGui.Abstractions/ConsoleWindow/ConsoleWindow.cs) menyediakan UI console. Ini komponen untuk dirangkai, bukan renderer/game loop lengkap. |
-| `.Extensions` | [ImGuiEx](../../Brutal.ImGui.Extensions/ImGui.extensions.cs) menambahkan operasi enum dan warna; `CheckboxFlags<T>` memeriksa ukuran enum harus sama dengan `int`. Nama Extensions juga muncul sebagai folder helper di modul lain. |
-| Binding publik | `Glfw`, `ImGui`, serta tipe handle Vulkan/Jolt menawarkan signature C# yang menangani sebagian marshaling. Baca signature yang dipakai, termasuk ref/out/span dan ownership. |
-| `PInvoke` | Kontrak native berisi pointer, ukuran, dan callback. Gunakan hanya saat wrapper publik tidak mencukupi dan game menangani lifetime serta ABI dengan benar. |
+| `.Abstractions` | [DeviceEx](../../Brutal.Vulkan.Abstractions/Classes/DeviceEx.cs), [StagingPool](../../Brutal.Vulkan.Abstractions/StagingPool.cs), and [FrameResources](../../Brutal.Vulkan.Abstractions/FrameResources.cs) help manage GPU resources; [ConsoleWindow](../../Brutal.ImGui.Abstractions/ConsoleWindow/ConsoleWindow.cs) provides a console UI. These are components to assemble, not a complete renderer/game loop. |
+| `.Extensions` | [ImGuiEx](../../Brutal.ImGui.Extensions/ImGui.extensions.cs) adds enum and color operations; `CheckboxFlags<T>` checks that the enum has the same size as `int`. Extensions also appears as a helper folder in other modules. |
+| Public bindings | `Glfw`, `ImGui`, and Vulkan/Jolt handle types expose C# signatures that handle some marshaling. Read the signatures you use, including ref/out/span parameters and ownership. |
+| `PInvoke` | Native contracts include pointers, sizes, and callbacks. Use them when public wrappers are insufficient and the game correctly handles lifetime and ABI requirements. |
 
-Jangan memilih overload lama hanya karena mirip tutorial library C# lain. [ImGui compatibility](../../Brutal.ImGui.Extensions/Compatibility/ImGui.Compatibility.cs) menandai `InputText(ref string)` obsolete dan mengalokasikan `ImInputString` sementara. Pilih `ImInputString` persisten untuk input UI; penjelasan ada di [fondasi](foundation.md).
+Avoid old overloads chosen solely because they resemble tutorials for other C# libraries. [ImGui compatibility](../../Brutal.ImGui.Extensions/Compatibility/ImGui.Compatibility.cs) marks `InputText(ref string)` obsolete and allocates a temporary `ImInputString`. Choose a persistent `ImInputString` for UI input; see [foundations](foundation.md).
 
-## Namespace, ABI, dan lifecycle
+## Namespaces, ABI, and lifecycle
 
-Nama folder bukan kontrak namespace: GLFW memakai `Brutal.GlfwApi`, Vulkan `Brutal.VulkanApi`, ImGui `Brutal.ImGuiApi`, Jolt `Brutal.JoltApi`, dan interop `Brutal.Interop`. Periksa deklarasi `namespace` serta `GlobalUsings.cs` modul. Global using milik library tidak otomatis menjadi import dalam project game.
+Folder names are not namespace contracts: GLFW uses `Brutal.GlfwApi`, Vulkan `Brutal.VulkanApi`, ImGui `Brutal.ImGuiApi`, Jolt `Brutal.JoltApi`, and interop `Brutal.Interop`. Check each module's `namespace` declarations and `GlobalUsings.cs`. A library's global using directives do not automatically become imports in the game project.
 
-[InteropStringMarshaller](../../Brutal.Interop/InteropStringMarshaller.cs) mengonversi `string` ke UTF-8 berterminator null, memakai buffer kecil atau alokasi native saat diperlukan. [IInteropHandle](../../Brutal.Interop/IInteropHandle.cs) dan [marshaller handle](../../Brutal.Interop/InteropHandleMarshaller.cs) memetakan wrapper struct ke handle unmanaged. Konversi tipe bukan bukti bahwa resource dimiliki wrapper atau aman disimpan lebih lama.
+[InteropStringMarshaller](../../Brutal.Interop/InteropStringMarshaller.cs) converts `string` to null-terminated UTF-8, using a small buffer or native allocation as needed. [IInteropHandle](../../Brutal.Interop/IInteropHandle.cs) and the [handle marshaller](../../Brutal.Interop/InteropHandleMarshaller.cs) map struct wrappers to unmanaged handles. Type conversion does not establish that a wrapper owns the resource or that retaining it is safe.
 
-Beberapa struct Vulkan mempunyai initializer penting. [VkInstanceCreateInfo](../../Brutal.Vulkan/Generated/Structs/VkInstanceCreateInfo.gen.cs) mengisi `sType` melalui konstruktor; `default` hanya men-zero-kan memori.
+Some Vulkan structs have important initializers. [VkInstanceCreateInfo](../../Brutal.Vulkan/Generated/Structs/VkInstanceCreateInfo.gen.cs) sets `sType` through its constructor; `default` only zeroes memory.
 
 ```csharp
 using Brutal.VulkanApi;
 
 unsafe
 {
-    // Benar untuk menjalankan initializer sType; isi field lain sesuai kebutuhan.
+    // Correct: runs the sType initializer; fill other fields as needed.
     var info = new VkInstanceCreateInfo();
 
-    // Salah bila diteruskan sebagai create-info siap pakai: sType tidak diinisialisasi.
+    // Incorrect as a ready-to-use create-info: sType is not initialized.
     // VkInstanceCreateInfo info = default;
 }
 ```
 
-Ini fragmen inisialisasi, bukan pembuatan instance lengkap. Untuk native resource, verifikasi create/init, pemilik, penggunaan, sinkronisasi, dan destroy/dispose pada tipe masing-masing. `IDisposable`, wrapper `Managed...`, struct handle pinjaman, dan proxy COM mempunyai perilaku berbeda; panduan runtime dan grafis merinci contohnya.
+This is an initialization fragment, not complete instance creation. For each native resource type, verify creation/initialization, ownership, use, synchronization, and destruction/disposal. `IDisposable`, `Managed...` wrappers, borrowed handle structs, and COM proxies behave differently; the runtime and graphics guides provide examples.
 
-## Memperbarui panduan
+## Updating the guides
 
-Saat API berubah, baca implementasi aktual lalu perbarui contoh dan tautan pada panduan topik terkait. Pertahankan daftar semua modul di `AGENTS.md` sesuai folder repo. Periksa target tautan, namespace, overload, dan lifecycle; jalankan build/test hanya saat project serta dependensi yang diperlukan tersedia dan laporkan cakupan verifikasinya.
+When APIs change, read the current implementation and update examples and links in the relevant topic guide. Keep the complete module list in `AGENTS.md` aligned with the repository folders. Check link targets, namespaces, overloads, and lifecycles; run builds/tests when the necessary projects and dependencies are available, and report what was verified.

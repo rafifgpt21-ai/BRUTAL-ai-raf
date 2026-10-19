@@ -1,12 +1,12 @@
-# Fisika, audio, konsol, dan job
+# Physics, audio, consoles, and jobs
 
-Baca bagian yang sesuai sebelum memasang callback fisika, mengelola audio, membuat konsol debug, atau membagi pekerjaan ke worker. Contoh adalah fragmen penggunaan; library native dan inisialisasi aplikasi harus sudah tersedia. Contoh bukan game lengkap dan belum diuji lewat build pada snapshot ini.
+Read the relevant section before adding physics callbacks, managing audio, creating a debug console, or distributing work across workers. Examples are usage fragments; native libraries and application initialization must already be available. They are not complete games and have not been built in this snapshot.
 
-## Jolt: handle native dan callback C#
+## Jolt: native handles and C# callbacks
 
-Namespace-nya `Brutal.JoltApi`. Tipe biasa seperti [PhysicsSystem](../../Brutal.Jolt/Generated/Classes/PhysicsSystem.gen.cs) dan [BoxShape](../../Brutal.Jolt/Generated/Classes/BoxShape.gen.cs) merupakan `readonly struct` pembungkus handle native, meskipun berada di folder `Classes/`. Buat lewat `Create(...)`. Ikuti keterangan **owned** atau **borrowed** pada setiap hasil API: misalnya `PhysicsSystem.GetBodyInterface()` meminjam dari sistem, sehingga pemanggil tidak memiliki lifetime-nya. Menyalin struct tidak menggandakan objek native.
+The namespace is `Brutal.JoltApi`. Regular types such as [PhysicsSystem](../../Brutal.Jolt/Generated/Classes/PhysicsSystem.gen.cs) and [BoxShape](../../Brutal.Jolt/Generated/Classes/BoxShape.gen.cs) are `readonly struct` wrappers around native handles, despite residing in `Classes/`. Create them through `Create(...)`. Follow the **owned** or **borrowed** annotations on each API result: for example, `PhysicsSystem.GetBodyInterface()` borrows from the system, so the caller does not own its lifetime. Copying a struct does not duplicate the native object.
 
-`Managed...` adalah **kelas abstrak untuk implementasi callback C#**, seperti [ManagedBodyActivationListener](../../Brutal.Jolt/Generated/Classes/ManagedBodyActivationListener.gen.cs), [ManagedContactListener](../../Brutal.Jolt/Generated/Classes/ManagedContactListener.gen.cs), dan [ManagedObjectLayerPairFilter](../../Brutal.Jolt/Generated/Classes/ManagedObjectLayerPairFilter.gen.cs). Turunkan kelas, lalu `override` virtual yang dibutuhkan. Proxy native meneruskan panggilan ke instance C#; konversi implisit menghasilkan handle dasar yang diterima API Jolt.
+`Managed...` types are **abstract classes for implementing callbacks in C#**, such as [ManagedBodyActivationListener](../../Brutal.Jolt/Generated/Classes/ManagedBodyActivationListener.gen.cs), [ManagedContactListener](../../Brutal.Jolt/Generated/Classes/ManagedContactListener.gen.cs), and [ManagedObjectLayerPairFilter](../../Brutal.Jolt/Generated/Classes/ManagedObjectLayerPairFilter.gen.cs). Derive a class and `override` the required virtual methods. A native proxy forwards calls to the C# instance; implicit conversion provides the base handle accepted by Jolt APIs.
 
 ```csharp
 using Brutal.JoltApi;
@@ -22,50 +22,50 @@ sealed class ActivationCounter : ManagedBodyActivationListener
 }
 ```
 
-Benar: pasang instance pada `system` yang sudah dibuat/diinisialisasi; hentikan pekerjaan fisika sebelum melepasnya. Urutan lifetime berikut dijalankan saat fisika tidak sedang diperbarui:
+Correct: attach the instance to an already created/initialized `system`; stop physics work before releasing it. Run this lifetime sequence while physics is not updating:
 
 ```csharp
 using var listener = new ActivationCounter();
 system.SetBodyActivationListener(listener);
 try
 {
-    // Jalankan pembaruan fisika aplikasi dan tunggu worker selesai.
+    // Update application physics and wait for workers to finish.
     if (listener.TakeCallbackException() is { } error)
         throw error;
 }
 finally
 {
-    system.SetBodyActivationListener(default); // Lepas sebelum listener.Dispose().
+    system.SetBodyActivationListener(default); // Detach before listener.Dispose().
 }
 ```
 
-Proxy menahan `GCHandle` kuat ke dirinya; GC tidak akan membersihkannya. Panggil `Dispose()` eksplisit sesudah sistem berhenti merujuknya, termasuk filter yang diteruskan ke `PhysicsSystem.Init(...)`. `Handle` milik proxy; lifetime-nya mengikuti instance managed. Callback dapat berjalan pada worker Jolt: gunakan sinkronisasi dan hormati batas callback; pada aktivasi body, body terkunci dan callback tidak boleh menulis/mengaktifkan/menonaktifkan body. Exception ditangkap proxy; periksa `LastCallbackException` atau ambil/reset melalui `TakeCallbackException()` setelah pembaruan selesai.
+The proxy holds a strong `GCHandle` to itself; the GC will not clean it up. Explicitly call `Dispose()` after the system stops referring to it, including filters passed to `PhysicsSystem.Init(...)`. The proxy owns `Handle`; its lifetime follows the managed instance. Callbacks may run on Jolt workers: synchronize shared data and respect callback restrictions; during body activation, the body is locked and the callback must not write to, activate, or deactivate bodies. The proxy catches exceptions; inspect `LastCallbackException` or retrieve/reset it through `TakeCallbackException()` after the update finishes.
 
-Salah: mendeklarasikan `protected new void OnBodyActivated(...)` menyembunyikan virtual, sehingga thunk tidak dipasang. Gunakan `override` dengan signature persis. Salah juga melepas listener ketika masih terpasang atau mengandalkan GC untuk membersihkannya. Implementasi dan aturan lifetime ada di [ManagedBodyActivationListener](../../Brutal.Jolt/Generated/Classes/ManagedBodyActivationListener.gen.cs).
+Incorrect: declaring `protected new void OnBodyActivated(...)` hides the virtual method, so the thunk is not installed. Use `override` with the exact signature. Releasing a listener while still attached or relying on the GC for cleanup is also incorrect. See [ManagedBodyActivationListener](../../Brutal.Jolt/Generated/Classes/ManagedBodyActivationListener.gen.cs) for implementation and lifetime rules.
 
-## Box2D: world 2D
+## Box2D: a 2D world
 
-Namespace `Brutal.Box2DApi`. Mulai dari default native yang disediakan, bukan struct definisi berisi nol. [B2WorldDef.Default](../../Brutal.Box2D/Structs.cs) memanggil default native; [Box2D.CreateWorld](../../Brutal.Box2D/Box2D.gen.cs) menerima `in B2WorldDef`. API instance [B2World](../../Brutal.Box2D/Structs.gen.cs) menyediakan `Step(float timeStep, int subStepCount)` dan `Dispose()`.
+Use `Brutal.Box2DApi`. Start with the supplied native defaults, rather than a zeroed definition struct. [B2WorldDef.Default](../../Brutal.Box2D/Structs.cs) calls the native default function; [Box2D.CreateWorld](../../Brutal.Box2D/Box2D.gen.cs) accepts `in B2WorldDef`. The [B2World](../../Brutal.Box2D/Structs.gen.cs) instance API provides `Step(float timeStep, int subStepCount)` and `Dispose()`.
 
 ```csharp
 using Brutal.Box2DApi;
 
 var definition = B2WorldDef.Default;
 using var world = Box2D.CreateWorld(in definition);
-world.Step(1f / 60f, 4); // Satu langkah; aplikasi mengatur akumulator fixed-step.
+world.Step(1f / 60f, 4); // One step; the application manages a fixed-step accumulator.
 ```
 
-`B2World`, `B2Body`, dan `B2Shape` adalah ID opaque, bukan objek managed pemilik resource. `IsNull()` hanya memeriksa nilai ID; `world.IsValid()` melakukan validasi native. Hapus world sekali oleh pemiliknya, lalu hentikan penggunaan salinan ID dan objek turunannya. `GetBodyEvents()`, `GetSensorEvents()`, dan `GetContactEvents()` mengembalikan data sementara untuk langkah saat ini; proses/salin data yang diperlukan sebelum langkah berikutnya. Lihat [implementasi ID manual](../../Brutal.Box2D/Structs.cs) dan [wrapper generated](../../Brutal.Box2D/Structs.gen.cs).
+`B2World`, `B2Body`, and `B2Shape` are opaque IDs, not managed resource-owning objects. `IsNull()` only checks the ID value; `world.IsValid()` performs native validation. The owner destroys the world once, then stops using copies of the ID and its child objects. `GetBodyEvents()`, `GetSensorEvents()`, and `GetContactEvents()` return temporary data for the current step; process/copy the necessary data before the next step. See the [manual ID implementation](../../Brutal.Box2D/Structs.cs) and [generated wrapper](../../Brutal.Box2D/Structs.gen.cs).
 
-Salah: `var definition = default(B2WorldDef);` sebagai pengganti konfigurasi awal; gunakan `B2WorldDef.Default` lalu ubah field yang diperlukan. Salah pula membuat dua pemilik `using` dari salinan `B2World` yang sama.
+Incorrect: using `var definition = default(B2WorldDef);` as the initial configuration; use `B2WorldDef.Default`, then change the required fields. Creating two `using` owners from copies of the same `B2World` is also incorrect.
 
-## Audio: FMOD, OpenAL, dan SDL Mixer
+## Audio: FMOD, OpenAL, and SDL Mixer
 
-Pilih API sesuai backend audio aplikasi. Modul-modul ini mengekspos pengelolaan resource, bukan komponen audio gameplay otomatis.
+Choose an API for the application's audio backend. These modules expose resource management rather than automatic gameplay audio components.
 
 ### FMOD
 
-Core memakai `Brutal.FmodApi`, Studio memakai `Brutal.FmodApi.Studio`. [Fmod.SystemCreate(uint)](../../Brutal.Fmod/FmodCoreApi/Generated/Libraries/Fmod.gen.cs) menghasilkan `FmodSystem`; extension [Init, Update, Release](../../Brutal.Fmod/FmodCoreApi/Generated/Libraries/Fmod.FmodSystem.gen.cs) mengelola sistem. Versi header tersedia sebagai [Fmod.VERSION](../../Brutal.Fmod/FmodCoreApi/Manual/Fmod.cs).
+Core uses `Brutal.FmodApi`; Studio uses `Brutal.FmodApi.Studio`. [Fmod.SystemCreate(uint)](../../Brutal.Fmod/FmodCoreApi/Generated/Libraries/Fmod.gen.cs) returns a `FmodSystem`; the [Init, Update, Release](../../Brutal.Fmod/FmodCoreApi/Generated/Libraries/Fmod.FmodSystem.gen.cs) extensions manage the system. The header version is available as [Fmod.VERSION](../../Brutal.Fmod/FmodCoreApi/Manual/Fmod.cs).
 
 ```csharp
 using Brutal.FmodApi;
@@ -74,7 +74,7 @@ var audio = Fmod.SystemCreate((uint)Fmod.VERSION);
 try
 {
     audio.Init(64, InitFlags.Normal, 0);
-    audio.Update(); // Panggil pada loop aplikasi selama sistem aktif.
+    audio.Update(); // Call in the application loop while the system is active.
 }
 finally
 {
@@ -82,13 +82,13 @@ finally
 }
 ```
 
-Untuk suara, tersedia `audio.CreateSound(RefString8, Mode, in CreateSoundExInfo)`, `CreateStream(...)`, dan `PlaySound(Sound, ChannelGroup, Bool32)`. Siapkan `CreateSoundExInfo.Default`, yang mengisi `CbSize`; `default(CreateSoundExInfo)` melewati constructor tersebut. Lepas sound yang dimiliki memakai `sound.Release()` setelah selesai digunakan. Signature berada di [FmodSystem extensions](../../Brutal.Fmod/FmodCoreApi/Generated/Libraries/Fmod.FmodSystem.gen.cs), [Sound extensions](../../Brutal.Fmod/FmodCoreApi/Generated/Libraries/Fmod.Sound.gen.cs), dan [CreateSoundExInfo](../../Brutal.Fmod/FmodCoreApi/Manual/Structs/CreateSoundExInfo.cs). Untuk bank/event Studio, baca [FmodStudioSystem](../../Brutal.Fmod/FmodStudioApi/Generated/Libraries/FmodStudio.FmodStudioSystem.gen.cs) dan [EventInstance](../../Brutal.Fmod/FmodStudioApi/Generated/Libraries/FmodStudio.EventInstance.gen.cs).
+For sounds, use `audio.CreateSound(RefString8, Mode, in CreateSoundExInfo)`, `CreateStream(...)`, and `PlaySound(Sound, ChannelGroup, Bool32)`. Prepare `CreateSoundExInfo.Default`, which populates `CbSize`; `default(CreateSoundExInfo)` bypasses that constructor. Release owned sounds with `sound.Release()` when finished. Signatures are in the [FmodSystem extensions](../../Brutal.Fmod/FmodCoreApi/Generated/Libraries/Fmod.FmodSystem.gen.cs), [Sound extensions](../../Brutal.Fmod/FmodCoreApi/Generated/Libraries/Fmod.Sound.gen.cs), and [CreateSoundExInfo](../../Brutal.Fmod/FmodCoreApi/Manual/Structs/CreateSoundExInfo.cs). For Studio banks/events, read [FmodStudioSystem](../../Brutal.Fmod/FmodStudioApi/Generated/Libraries/FmodStudio.FmodStudioSystem.gen.cs) and [EventInstance](../../Brutal.Fmod/FmodStudioApi/Generated/Libraries/FmodStudio.EventInstance.gen.cs).
 
-Benar: periksa hasil `Try...` yang mengembalikan `Result` dengan `.Check()` atau tangani nilainya sendiri. Wrapper tanpa `Try` sudah memanggil `.Check()`. Salah: mengabaikan `Result` lalu memakai handle keluaran seolah operasi berhasil. [ResultExtensions.Check](../../Brutal.Fmod/FmodCoreApi/Manual/ResultExtensions.cs) melempar `FmodResultException` saat hasil bukan `Result.Ok`.
+Correct: check `Try...` calls returning `Result` with `.Check()`, or handle the value yourself. Wrappers without `Try` already call `.Check()`. Incorrect: ignoring `Result` and using the output handle as though the operation succeeded. [ResultExtensions.Check](../../Brutal.Fmod/FmodCoreApi/Manual/ResultExtensions.cs) throws `FmodResultException` when the result is not `Result.Ok`.
 
 ### OpenAL
 
-Namespace `Brutal.OpenAlApi`. Buka [Alc.OpenDevice()](../../Brutal.OpenAl/Manual/Alc.Wrapper.cs), buat [Device.CreateContext()](../../Brutal.OpenAl/Manual/Device.cs), lalu [Context.MakeCurrent()](../../Brutal.OpenAl/Manual/Context.cs) sebelum operasi `Al`. Lepas source/buffer saat context masih current; detach context sebelum membuang context, lalu device.
+Use `Brutal.OpenAlApi`. Open [Alc.OpenDevice()](../../Brutal.OpenAl/Manual/Alc.Wrapper.cs), create a context with [Device.CreateContext()](../../Brutal.OpenAl/Manual/Device.cs), then call [Context.MakeCurrent()](../../Brutal.OpenAl/Manual/Context.cs) before `Al` operations. Release sources/buffers while the context is still current; detach the context before disposing it, then dispose the device.
 
 ```csharp
 using Brutal.OpenAlApi;
@@ -102,11 +102,11 @@ try
     try
     {
         Al.ThrowIfError();
-        // buffer.SetData(format, pcmBytes, sampleRate): data PCM yang sudah didekode.
+        // buffer.SetData(format, pcmBytes, sampleRate): already decoded PCM data.
     }
     finally
     {
-        buffer.Delete(); // Buffer contoh ini belum diikat ke source.
+        buffer.Delete(); // This example buffer has not been attached to a source.
     }
 }
 finally
@@ -115,21 +115,21 @@ finally
 }
 ```
 
-[AlBuffer.SetData](../../Brutal.OpenAl/Manual/AlBuffer.cs) menerima format, `ReadOnlySpan<byte>` dan sample rate; ini unggahan PCM, bukan pembaca file WAV/MP3. [Al.GenBuffer/GenSource](../../Brutal.OpenAl/Generated/Al/Al.ObjectNames.gen.cs) membuat nama native. [AlBuffer](../../Brutal.OpenAl/Generated/Al/AlBuffer.ObjectName.gen.cs) dan [AlSource](../../Brutal.OpenAl/Generated/Al/AlSource.ObjectName.gen.cs) adalah struct nama yang harus dihapus tepat sekali; `new AlBuffer(1)` hanya membungkus angka, bukan alokasi. Lepas ikatan/pemakaian buffer oleh source sebelum menghapus buffer. Untuk parameter berbasis enum, import namespace opt-in `Brutal.OpenAlApi.Params`.
+[AlBuffer.SetData](../../Brutal.OpenAl/Manual/AlBuffer.cs) accepts a format, `ReadOnlySpan<byte>`, and a sample rate; it uploads PCM rather than reading WAV/MP3 files. [Al.GenBuffer/GenSource](../../Brutal.OpenAl/Generated/Al/Al.ObjectNames.gen.cs) creates native names. [AlBuffer](../../Brutal.OpenAl/Generated/Al/AlBuffer.ObjectName.gen.cs) and [AlSource](../../Brutal.OpenAl/Generated/Al/AlSource.ObjectName.gen.cs) are name structs that must be deleted exactly once; `new AlBuffer(1)` only wraps a number, without allocating. Detach a buffer from sources and stop their use of it before deleting the buffer. For enum-based parameters, import the opt-in `Brutal.OpenAlApi.Params` namespace.
 
-Benar: gunakan [Al.ThrowIfError()](../../Brutal.OpenAl/Manual/Errors.cs) untuk memeriksa operasi AL; wrapper tidak otomatis memeriksa setiap panggilan AL. Salah: membuat operasi AL pada worker tanpa menyiapkan context yang berlaku. Jika memakai context per-thread, periksa dukungan `ALC_EXT_thread_local_context` sebelum memakai `Context.MakeThreadCurrent(...)`, dan detach lewat `Context.MakeThreadCurrent(null)` pada thread itu sebelum membuang context.
+Correct: use [Al.ThrowIfError()](../../Brutal.OpenAl/Manual/Errors.cs) to check AL operations; wrappers do not automatically check every AL call. Incorrect: performing AL operations on a worker without setting up an applicable context. When using per-thread contexts, check for `ALC_EXT_thread_local_context` support before using `Context.MakeThreadCurrent(...)`, and detach with `Context.MakeThreadCurrent(null)` on that thread before disposing the context.
 
 ### SDL Mixer
 
-Namespace `Brutal.SdlApi.Mixer` memakai API SDL_mixer 3. Mulai dengan `SdlMixer.Init()`, lalu `CreateMixerDevice(uint, SdlAudioSpec*)` untuk output perangkat atau `CreateMixer(SdlAudioSpec*)` untuk mixing tanpa perangkat. `LoadAudio(MixMixer, string, bool)` menghasilkan `MixAudio`; `CreateTrack(MixMixer)` menghasilkan track. Signature dan kontrak pelepasan ada di [wrapper SDL Mixer](../../Brutal.Sdl.Mixer/Generated/Libraries/SdlMixer.Ergonomic.gen.cs).
+The `Brutal.SdlApi.Mixer` namespace uses the SDL_mixer 3 API. Start with `SdlMixer.Init()`, then use `CreateMixerDevice(uint, SdlAudioSpec*)` for device output or `CreateMixer(SdlAudioSpec*)` for mixing without a device. `LoadAudio(MixMixer, string, bool)` returns `MixAudio`; `CreateTrack(MixMixer)` returns a track. Signatures and release contracts are in the [SDL Mixer wrapper](../../Brutal.Sdl.Mixer/Generated/Libraries/SdlMixer.Ergonomic.gen.cs).
 
-`DestroyMixer(mixer)` menghancurkan seluruh track/group miliknya; hentikan penggunaan semua salinannya dan jangan memanggil `DestroyTrack`/`DestroyGroup` lagi sesudah itu. `MixAudio` dapat dibagi antar-mixer dan tetap harus dilepas pemiliknya melalui `DestroyAudio(audio)`. Operasi ini mengurangi reference count; sesudahnya pemanggil menganggap handle tidak valid walaupun track masih menahan referensi internal. Untuk mixer perangkat, jalankan `DestroyMixer` pada main thread; mixer tanpa perangkat mengizinkannya dari thread mana pun.
+`DestroyMixer(mixer)` destroys all its tracks/groups; stop using all copies and do not call `DestroyTrack`/`DestroyGroup` on them afterward. `MixAudio` can be shared across mixers and must still be released by its owner through `DestroyAudio(audio)`. This operation decrements its reference count; afterward, the caller treats the handle as invalid even if a track still holds an internal reference. For device mixers, call `DestroyMixer` on the main thread; mixers without a device allow it from any thread.
 
-[Callback managed](../../Brutal.Sdl.Mixer/Manual/Libraries/SdlMixer.Callbacks.cs) berjalan pada thread audio dan ditahan oleh `GCHandle`. Bersihkan registrasi dengan setter callback yang sama dan argumen `null` selagi track/group/mixer masih hidup; penghancuran objek native tidak membersihkan registry managed. Batasi pemakaian `Span<float>` PCM ke callback tersebut. Panggil [ThrowPendingCallbackExceptions()](../../Brutal.Sdl.Mixer/SdlMixer.cs) secara berkala untuk meneruskan exception callback ke thread aplikasi. Setelah resource selesai dipakai, akhiri dengan [SdlMixer.Quit()](../../Brutal.Sdl.Mixer/Manual/Libraries/SdlMixer.Init.cs): wrapper menunggu native `Quit` kembali sebelum membebaskan sisa handle callback dan membersihkan exception tersimpan.
+[Managed callbacks](../../Brutal.Sdl.Mixer/Manual/Libraries/SdlMixer.Callbacks.cs) run on the audio thread and are retained by `GCHandle`. Clear registrations through the same callback setter with a `null` argument while the track/group/mixer is still alive; native object destruction does not clear the managed registry. Limit PCM `Span<float>` use to that callback. Call [ThrowPendingCallbackExceptions()](../../Brutal.Sdl.Mixer/SdlMixer.cs) periodically to rethrow callback exceptions on the application thread. After resources are no longer in use, finish with [SdlMixer.Quit()](../../Brutal.Sdl.Mixer/Manual/Libraries/SdlMixer.Init.cs): the wrapper waits for native `Quit` to return before freeing remaining callback handles and clearing stored exceptions.
 
-## ImGui: konsol dan command
+## ImGui: consoles and commands
 
-Namespace yang benar ialah `Brutal.ImGuiApi.Abstractions`. [ConsoleWindow](../../Brutal.ImGui.Abstractions/ConsoleWindow/ConsoleWindow.cs) sudah membuat `TerminalInterface` pada constructor; `Show()` membuka konsol dan `Draw(float2 viewportPosition, float2 viewportSize, float unscaledDeltaTime, bool noFade = false)` menggambarnya. Panggil `Draw` dari frame ImGui aktif setelah aplikasi menyiapkan context, font, backend input, dan renderer. Hubungkan input aplikasi ke `HandleInputAction(ConsoleWindow.Actions.Up/Down/Submit/Toggle)`.
+The correct namespace is `Brutal.ImGuiApi.Abstractions`. [ConsoleWindow](../../Brutal.ImGui.Abstractions/ConsoleWindow/ConsoleWindow.cs) creates a `TerminalInterface` in its constructor; `Show()` opens the console, and `Draw(float2 viewportPosition, float2 viewportSize, float unscaledDeltaTime, bool noFade = false)` draws it. Call `Draw` during an active ImGui frame after the application has set up the context, fonts, input backend, and renderer. Connect application input to `HandleInputAction(ConsoleWindow.Actions.Up/Down/Submit/Toggle)`.
 
 ```csharp
 using Brutal.ImGuiApi.Abstractions;
@@ -138,34 +138,34 @@ sealed class DebugCommands
 {
     public int SpawnCount { get; private set; }
 
-    [TerminalAction("spawn", "Atur jumlah spawn debug")]
+    [TerminalAction("spawn", "Set the debug spawn count")]
     private void Spawn(int count = 1) => SpawnCount = count;
 }
 ```
 
-Fragmen setup, terpisah dari deklarasi kelas di atas:
+Setup fragment, separate from the class declaration above:
 
 ```csharp
 var console = new ConsoleWindow();
 var commands = new DebugCommands();
 console.Terminal.RegisterObject(commands);
-console.Print("Konsol siap");
+console.Print("Console ready");
 console.Show();
 console.Terminal.Execute("spawn 3");
-// Dalam frame ImGui: console.Draw(viewportPosition, viewportSize, deltaTime);
-// Saat pemilik command dilepas:
+// During an ImGui frame: console.Draw(viewportPosition, viewportSize, deltaTime);
+// When releasing the command owner:
 console.Terminal.UnregisterObject(commands);
 ```
 
-[TerminalInterface](../../Brutal.ImGui.Abstractions/ConsoleWindow/Terminal/TerminalInterface.cs) juga menerima `RegisterCommand(Delegate, object? inObject = null)`, tetapi method delegate tetap wajib memiliki [TerminalActionAttribute](../../Brutal.ImGui.Abstractions/ConsoleWindow/Terminal/TerminalCallbackAttribute.cs). Salah: `RegisterCommand((Action)(() => ...))` tanpa atribut; registrasi akan melempar exception. `RegisterObject` mencari method beratribut dan membentuk `Action`, sehingga pilih callback `void` dengan parameter yang didukung. Gunakan nama command unik agar tidak bertabrakan antarregistrasi.
+[TerminalInterface](../../Brutal.ImGui.Abstractions/ConsoleWindow/Terminal/TerminalInterface.cs) also accepts `RegisterCommand(Delegate, object? inObject = null)`, but the delegate's method must still have a [TerminalActionAttribute](../../Brutal.ImGui.Abstractions/ConsoleWindow/Terminal/TerminalCallbackAttribute.cs). Incorrect: `RegisterCommand((Action)(() => ...))` without an attribute; registration throws. `RegisterObject` finds attributed methods and creates `Action` delegates, so choose `void` callbacks with supported parameters. Use unique command names to avoid registration conflicts.
 
-[Parser command](../../Brutal.ImGui.Abstractions/ConsoleWindow/Terminal/TerminalCommand.cs) mendukung tipe primitif, `string`, dan `DateTime`, termasuk nilai parameter default. `ArgParseMode.Unparsed` membutuhkan tepat satu parameter `string`; vektor bukan tipe argumen yang didukung. Terminal menyediakan `help`, `clear`, dan pemisahan beberapa command dengan `;`. `Execute` menangani `TerminalInterfaceException`; exception gameplay dari callback bukan hasil boolean kegagalan yang dijamin tertangani.
+The [command parser](../../Brutal.ImGui.Abstractions/ConsoleWindow/Terminal/TerminalCommand.cs) supports primitive types, `string`, and `DateTime`, including default parameter values. `ArgParseMode.Unparsed` requires exactly one `string` parameter; vectors are not supported argument types. The terminal provides `help`, `clear`, and multiple commands separated by `;`. `Execute` handles `TerminalInterfaceException`; gameplay exceptions from callbacks are not guaranteed to be handled as a boolean failure result.
 
-`ConsoleWindow` juga merupakan `ILoggerProvider` lewat `CreateLogger(...)`. `Print`/`OnLog` menampung pesan dengan lock, lalu `Draw` memanggil `SwapBuffers` untuk menerapkannya pada UI. Gunakan jalur pesan ini dari worker; jalankan rendering dan registrasi/eksekusi command pada thread aplikasi yang mengelola UI. Lihat [ConsoleWindow dan logger](../../Brutal.ImGui.Abstractions/ConsoleWindow/ConsoleWindow.cs).
+`ConsoleWindow` also implements `ILoggerProvider` through `CreateLogger(...)`. `Print`/`OnLog` buffers messages under a lock, then `Draw` calls `SwapBuffers` to apply them to the UI. Use this message path from workers; run rendering and command registration/execution on the application thread managing the UI. See [ConsoleWindow and logging](../../Brutal.ImGui.Abstractions/ConsoleWindow/ConsoleWindow.cs).
 
-## Concurrency: batch job paralel
+## Concurrency: parallel job batches
 
-Implementasikan [IJob.Run()](../../Brutal.Concurrency/Jobs/IJob.cs) di namespace `Brutal.Concurrency.Jobs`. [JobScheduler](../../Brutal.Concurrency/Jobs/JobScheduler.cs) membagi job menurut estimasi biaya ke beberapa `JobRunner`, yang memakai .NET ThreadPool. Estimasi biaya adalah bobot relatif untuk distribusi, bukan deadline.
+Implement [IJob.Run()](../../Brutal.Concurrency/Jobs/IJob.cs) in `Brutal.Concurrency.Jobs`. [JobScheduler](../../Brutal.Concurrency/Jobs/JobScheduler.cs) distributes jobs by estimated cost across `JobRunner` instances that use the .NET ThreadPool. Cost estimates are relative distribution weights, not deadlines.
 
 ```csharp
 using Brutal.Concurrency.Jobs;
@@ -176,7 +176,7 @@ sealed class SquareJob(int[] output, int index) : IJob
 }
 ```
 
-Fragmen pemanggil:
+Caller fragment:
 
 ```csharp
 var output = new int[8];
@@ -185,11 +185,11 @@ for (int i = 0; i < output.Length; ++i)
     scheduler.Queue(new SquareJob(output, i), timeCostEstimate: 1);
 scheduler.ExecuteJobs();
 scheduler.Wait();
-// Hasil output sekarang dapat dikonsumsi pemanggil.
+// The caller can now consume output.
 ```
 
-Queue seluruh batch saat runner idle, panggil `ExecuteJobs()`, lalu tunggu selesai sebelum memakai hasil atau mengantre batch berikutnya. `Queue`/`ExecuteJobs` menolak pekerjaan saat runner sibuk; kelola pemanggilan scheduler dari satu thread pengendali. Salah: memanggil `Queue` sesudah `ExecuteJobs()` dengan asumsi job selalu dapat ditambahkan sewaktu worker berjalan. Contoh membagi satu elemen output per job agar tidak ada penulisan bersama pada elemen yang sama.
+Queue the entire batch while runners are idle, call `ExecuteJobs()`, then wait for completion before using the results or queuing the next batch. `Queue`/`ExecuteJobs` reject work while runners are busy; control the scheduler from a single thread. Incorrect: calling `Queue` after `ExecuteJobs()` and assuming jobs can always be added while workers run. The example assigns one output element per job to avoid concurrent writes to the same element.
 
-[JobRunner.Wait()](../../Brutal.Concurrency/Jobs/JobRunner.cs) melakukan busy-wait, sehingga cocok hanya untuk sinkronisasi pendek yang memang direncanakan. `AbortJobs(waitForCompletion: true)` menunggu pembatalan batch, tetapi tidak menghentikan `Run()` yang sedang berjalan. `JobRunner` tidak menangkap exception `Run()` menjadi hasil seperti `Task`; tangani kegagalan yang diharapkan di dalam job dan simpan hasil/error untuk dibaca pemanggil. Jangan menggantungkan shutdown resource pada pembatalan paksa job.
+[JobRunner.Wait()](../../Brutal.Concurrency/Jobs/JobRunner.cs) busy-waits, so reserve it for planned, short synchronization. `AbortJobs(waitForCompletion: true)` waits for batch cancellation but does not interrupt a currently running `Run()`. `JobRunner` does not capture `Run()` exceptions as a `Task`-like result; handle expected failures inside the job and store results/errors for the caller. Do not depend on forcibly stopping jobs to shut down resources.
 
-Untuk metrik konsisten, pakai `JobScheduler.GetMetrics(Span<JobRunnerMetrics>)` dengan kapasitas minimal sebanyak runner. Varian `GetMetricsUnsafe` tidak menjamin snapshot atomik selama worker berjalan. Scheduler ini bukan dependency graph otomatis: jadwalkan tahap yang bergantung pada hasil setelah batch prasyarat selesai. Sumber: [JobScheduler](../../Brutal.Concurrency/Jobs/JobScheduler.cs) dan [JobRunner](../../Brutal.Concurrency/Jobs/JobRunner.cs).
+For consistent metrics, use `JobScheduler.GetMetrics(Span<JobRunnerMetrics>)` with capacity for at least the number of runners. `GetMetricsUnsafe` does not guarantee an atomic snapshot while workers run. This scheduler is not an automatic dependency graph: schedule dependent stages after their prerequisite batches finish. Sources: [JobScheduler](../../Brutal.Concurrency/Jobs/JobScheduler.cs) and [JobRunner](../../Brutal.Concurrency/Jobs/JobRunner.cs).

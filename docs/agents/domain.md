@@ -2,20 +2,20 @@
 
 Layout: single-context.
 
-## Sebelum eksplorasi
+## Before exploring
 
-- Baca GLOSSARY.md di root jika tersedia.
-- Baca ADR di docs/adr/ yang relevan dengan area pekerjaan.
-- Jika dokumen belum tersedia, lanjutkan pekerjaan.
-  Buat dokumen saat istilah atau keputusan benar-benar disepakati.
+- Read GLOSSARY.md at the root if it exists.
+- Read ADRs in docs/adr/ that are relevant to the area of work.
+- If these documents do not exist yet, continue working.
+  Create them when terms or decisions are actually agreed upon.
 
-## Kosakata
+## Vocabulary
 
-Gunakan istilah yang didefinisikan glossary dalam dokumentasi,
-issue, kode, dan pengujian. Verifikasi istilah baru dari sumber
-kode dan catat kesenjangan yang memerlukan keputusan domain.
+Use the terms defined in the glossary in documentation,
+issues, code, and tests. Verify new terms against the source
+code and record gaps that require a domain decision.
 
-## Keputusan arsitektur
+## Architectural decisions
 
-Jika usulan bertentangan dengan ADR, sebutkan ADR terkait dan
-alasan perubahan secara eksplisit.
+If a proposal contradicts an ADR, explicitly identify the ADR
+and explain the reason for the change.
