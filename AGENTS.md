@@ -51,11 +51,6 @@ This table covers all 48 `Brutal.*` folders. Links point to source; source avail
 
 ## Agent skills
 
-### Adaptive orchestration
-
-When the user invokes `$adaptive-orchestrator`, read the project-local
-[Adaptive Orchestrator skill](.agents/skills/adaptive-orchestrator/SKILL.md)
-for model routing, task dependencies, and optional isolated subagents.
 
 ### Issue tracker
 

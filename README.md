@@ -135,6 +135,10 @@ That opens a window with no graphics API. What you add next is up to you:
 
 Questions and "how do I" threads go on the [Guides and Help forum](https://forums.ahwoo.com/forums/brutal/guides-and-help/).
 
+### Game example in this checkout
+
+[Kopi Kucing: Seduh & Santai](games/KopiKucing/README.md) is a playable C# coffee-cart game built with BRUTAL SDL 3. Run `dotnet run --project games/KopiKucing` with the .NET 10 SDK. It uses the published BRUTAL packages while framework project files remain unavailable in this snapshot.
+
 ### Building from source
 
 This is the source for every published package. Project files, a solution and build scripts are coming. Until then use the NuGet packages, and use this repository to read and fork the code.

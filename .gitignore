@@ -1,0 +1,20 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+[Tt]estResults/
+node_modules/
+
+# IDE and operating system files
+.vs/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+
+# Local game projects and their documentation
+/games/
+/kopi-kucing/
+/package.json
+/docs/adr/*-fieldcraft-*.md
